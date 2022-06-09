@@ -10,10 +10,9 @@ Simple library for drawing floating stat bars.
 ## About
 * Successor to `bevy_simple_stat_bars`.
 This has a much better design.
-* Stat bars can have any arbitrary orientation
-* The style options with this release are very limited, only colors and borders.
 * Supports Bevy version 0.7
-* Uses the builtin Bevy sprite renderer for drawing
+* The style options with this release are very limited, only colors and borders.
+* Uses the builtin Bevy sprite renderer for drawing.
 
 # Usage
 
