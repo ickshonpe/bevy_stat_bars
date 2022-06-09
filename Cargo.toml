@@ -1,0 +1,23 @@
+[package]
+name = "bevy_stat_bars"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+keywords = ["bevy", "gamedev", "graphics", "2d", "sprites"]
+categories = ["game-development"]
+repository = "https://github.com/ickshonpe/bevy_stat_bars"
+description = "plugin for drawing floating stat bars"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies.bevy]
+version = "0.7"
+default-features = false
+features = ["render"]
+
+[dependencies.copyless]
+version = "0.1.5"
+
+[dev-dependencies.bevy]
+version = "0.7"
+default-features = true
