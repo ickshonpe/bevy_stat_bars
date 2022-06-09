@@ -2,10 +2,8 @@
 
 Simple library for drawing floating stat bars.
 
-## Some Pics
+## 
 ![](3.png)
-
-![](stat_bars.png)
 
 ## About
 * Successor to `bevy_simple_stat_bars`.
