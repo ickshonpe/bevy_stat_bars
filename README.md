@@ -18,19 +18,26 @@ In your Cargo.toml `[dependencies]` section, add the line:
 ```toml
 bevy_stat_bars = "0.1"
 ```
-This a minimal system that should spawn a horizontal 75% filled stat bar in the middle of the screen (assuming you already have an app with a 2d camera):
-
+This is a minimal app that should draw a 75% full stat bar in the middle of the window:
 ```rust
+use bevy::prelude::*;
 use bevy_stat_bars::*;
 
-fn spawn_a_stat_bar(mut commands: Commands) {
-    commands.spawn_bundle((
-        StatBar {
-            value: 0.75,
-            size: Vec2::new(200., 20.),
-            ..Default::default()
-        },
-    ));
+fn main() {
+    App::new()
+    .add_plugins(DefaultPlugins)
+    .add_plugin(StatBarsPlugin)
+    .add_startup_system(|mut commands: Commands| { 
+        commands
+            .spawn_bundle(OrthographicCameraBundle::new_2d())
+            .commands()
+            .spawn_bundle((StatBar {
+                value: 0.75,
+                size: Vec2::new(200., 20.),
+                ..Default::default()
+            },));
+    })   
+    .run();
 }
 ```
 
@@ -38,7 +45,6 @@ There are some complete examples you can run with the commands:
 ```
 cargo run --example basic
 cargo run --example interactive
-cargo run --example minimal
 ```
 
 
