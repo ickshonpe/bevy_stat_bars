@@ -6,10 +6,11 @@ Simple library for drawing floating stat bars.
 
 ## About
 * Successor to `bevy_simple_stat_bars`.
-* version 0.2+ supports Bevy 0.8, 0.1 supports Bevy 0.7
-* The style options with this release are very limited, only colors and borders.
+* The style options are very limited, only colors and borders.
+* There is some very basic automatic color interpolation support (So a health bar changes to red when health low, for example). 
 * Uses the builtin Bevy sprite renderer for drawing.
 * 0.2 requires that StarBar/StarBars entities also have the VisibilityBundle components, otherwise they won't be drawn. 
+* version 0.2+ supports Bevy 0.8, 0.1 supports Bevy 0.7
 
 # Usage
 
@@ -45,6 +46,8 @@ There are some complete examples you can run with the commands:
 ```
 cargo run --example basic
 cargo run --example interactive
+cargo run --example minimal
+cargo run --example interpolation
 ```
 
 # Notes

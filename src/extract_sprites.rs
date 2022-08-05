@@ -118,7 +118,7 @@ pub (super) fn extract_stat_bars_to_sprites(
                         out[3]
                     )
                 },
-                BarColor::Function(f) => f(value)
+                BarColor::Function{ min, max, calculate_color } => calculate_color(min, max, value)
             };
             let size = value * bar.length * Vec2::X + bar.thickness * Vec2::Y;
             let translation = 

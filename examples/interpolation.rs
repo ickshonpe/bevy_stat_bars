@@ -76,14 +76,14 @@ fn setup(mut commands: Commands) {
                     length: 300., 
                     thickness: 30., 
                     style: StatBarStyle {
-                        bar_color: BarColor::Function(|value| { if value < 0.25 {
-                                Color::RED
+                        bar_color: BarColor::Function{ min: Color::RED, max: Color::WHITE, calculate_color: |min, max, value| { if value < 0.25 {
+                                min
                            } else if value < 0.5 {
                                 Color::YELLOW
                            } else {
-                                Color::WHITE
+                                max
                            }
-                        }),
+                        }},
                         empty_color: Color::BLACK,
                         border,
                     }, 

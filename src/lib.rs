@@ -19,7 +19,7 @@ pub enum BarColor {
     Cospolate { min: Color, max: Color },
     LerpHSV { min: Color, max: Color },
     CospolateHSV { min: Color, max: Color },
-    Function(fn(f32) -> Color), // + 'static + Send + Sync),
+    Function{ min: Color, max: Color, calculate_color: fn(Color, Color, f32) -> Color }, // + 'static + Send + Sync),
 }
 
 impl std::fmt::Debug for BarColor {
@@ -30,7 +30,8 @@ impl std::fmt::Debug for BarColor {
             Self::Cospolate { min, max } => f.debug_struct("Cospolate").field("min", min).field("max", max).finish(),
             Self::LerpHSV { min, max } => f.debug_struct("LerpHSV").field("min", min).field("max", max).finish(),
             Self::CospolateHSV { min, max } => f.debug_struct("CospolateHSV").field("min", min).field("max", max).finish(),
-            Self::Function(arg0) => f.debug_tuple("Function").field(arg0).finish(),
+            Self::Function { min, max, calculate_color } => 
+                f.debug_struct("Function").field("min", min).field("max", max).field("calculate_color", calculate_color).finish(),
         }
     }
 }
@@ -43,6 +44,7 @@ impl BarColor {
             BarColor::Cospolate { min, .. } => *min = color,
             BarColor::LerpHSV { min, .. } => *min = color,
             BarColor::CospolateHSV { min, .. } => *min = color,
+            BarColor::Function { min, .. } => *min = color,
             _ => {}
         }
     }
@@ -53,6 +55,7 @@ impl BarColor {
             BarColor::Cospolate { max, .. } => *max = color,
             BarColor::LerpHSV { max, .. } => *max = color,
             BarColor::CospolateHSV { max, .. } => *max = color,
+            BarColor::Function { max, .. } => *max = color, 
             _ => {}
         }
     }
