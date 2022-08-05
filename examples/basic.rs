@@ -19,8 +19,9 @@ fn setup(
         )
         .insert(StatBar {
             value: 0.75,
-            displacement: 40.0 * Vec2::Y,
-            size: vec2(40., 6.),
+            translation: 40.0 * Vec2::Y,
+            length: 40.,
+            thickness: 6.,
             ..Default::default()
         });
 
@@ -38,11 +39,12 @@ fn setup(
     )
     .insert(StatBar {
         value: 0.5,
-        displacement: 24.0 * Vec2::X,
-        size: vec2(40., 6.),
+        translation: 24.0 * Vec2::X,
+        length: 40.,
+        thickness: 6.,
         rotation: 0.5 * std::f32::consts::PI,        
         style: StatBarStyle {
-            full_color: Color::RED,
+            bar_color: Color::RED.into(),
             empty_color: Color::MAROON,
             border: StatBarBorder::new(Color::DARK_GRAY, 2.0).into(),
         },
@@ -63,22 +65,23 @@ fn setup(
     )
     .insert(StatBar {
         value: 0.3,
-        displacement: -16.0 * Vec2::Y,
-        size: vec2(80., 12.),
+        translation: -16.0 * Vec2::Y,
+        length: 80.,
+        thickness: 12.,
         style: StatBarStyle {
-            full_color: Color::CYAN,
+            bar_color: Color::CYAN.into(),
             empty_color: Color::NAVY,
             border: StatBarBorder::new(Color::RED, 2.0).into(),
         },
         ..Default::default()
     })
-    .insert(StatBars {
+    .insert_bundle(StatBarsBundle::new( StatBars {
         bars: vec![
             StatBar {
                 value: 0.9,
-                displacement: -12.0 * Vec2::Y,
+                translation: -12.0 * Vec2::Y,
                 style: StatBarStyle {
-                    full_color: Color::GREEN,
+                    bar_color: Color::GREEN.into(),
                     empty_color: Color::OLIVE,
                     border: StatBarBorder::new(Color::SEA_GREEN, 1.0).into(),
                 },
@@ -87,7 +90,7 @@ fn setup(
             StatBar {
                 value: 0.6,
                 style: StatBarStyle {
-                    full_color: Color::GREEN,
+                    bar_color: Color::GREEN.into(),
                     empty_color: Color::OLIVE,
                     border: StatBarBorder::new(Color::SEA_GREEN, 1.0).into(),
                 },
@@ -95,9 +98,9 @@ fn setup(
             },
             StatBar {
                 value: 0.75,
-                displacement: 12.0 * Vec2::Y,
+                translation: 12.0 * Vec2::Y,
                 style: StatBarStyle {
-                    full_color: Color::GREEN,
+                    bar_color: Color::GREEN.into(),
                     empty_color: Color::OLIVE,
                     border: StatBarBorder::new(Color::SEA_GREEN, 1.0).into(),
                 },
@@ -106,7 +109,7 @@ fn setup(
         ],
         rotation: -0.75 * std::f32::consts::PI,
         ..Default::default()
-    });
+    }));
 }
 
 fn main() {
@@ -120,7 +123,7 @@ fn main() {
     .insert_resource(ClearColor(Color::rgb(0.0, 0.1, 0.0)))
     .add_plugins(DefaultPlugins)
     .add_plugin(StatBarsPlugin)
-    .add_startup_system(|mut commands: Commands| { commands.spawn_bundle(OrthographicCameraBundle::new_2d()); })   
+    .add_startup_system(|mut commands: Commands| { commands.spawn_bundle(Camera2dBundle::default()); })   
     .add_startup_system(setup)
     .run();
 }

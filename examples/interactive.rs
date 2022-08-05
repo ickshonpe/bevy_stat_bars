@@ -38,22 +38,29 @@ fn spawn_player(
             Hp { current: 30, max: 30 },
             Mp { current: 12, max: 15 },
             StatBars{
-                displacement: displacement[i],
+                translation: displacement[i],
                 rotation: 0.0,
                 bars: vec![
                     StatBar {                    
-                        size: vec2(48.0, 8.0),
-                        displacement: -local[i],
+                        length: 48.,
+                        thickness: 8.,
+                        translation: -local[i],
+                        style: StatBarStyle { 
+                            bar_color: BarColor::Lerp { min: Color::RED, max: Color::GREEN }, 
+                            empty_color: Color::BLACK, 
+                            ..Default::default()
+                        },
                         ..Default::default()
                     },
                     StatBar {
                         style: StatBarStyle { 
-                            full_color: Color::PURPLE, 
+                            bar_color: Color::PURPLE.into(), 
                             empty_color: Color::DARK_GREEN, 
                             ..Default::default()
                         },
-                        displacement: local[i],
-                        size: vec2(48.0, 8.0),
+                        translation: local[i],
+                        length: 48.,
+                        thickness: 8.,
                         ..Default::default()
                     },
                 ],
@@ -197,7 +204,7 @@ fn main() {
     .insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.1)))
     .add_plugins(DefaultPlugins)
     .add_plugin(StatBarsPlugin)
-    .add_startup_system(|mut commands: Commands| { commands.spawn_bundle(OrthographicCameraBundle::new_2d()); })   
+    .add_startup_system(|mut commands: Commands| { commands.spawn_bundle(Camera2dBundle::default()); })   
     .add_startup_system(spawn_player)
     .add_system(move_player)
     .add_system(death)

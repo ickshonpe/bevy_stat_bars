@@ -1,6 +1,5 @@
 pub mod extract_sprites;
 
-use bevy::math::vec2;
 use bevy::prelude::*;
 
 /// using the sprite renderer to draw the stat bars
@@ -13,10 +12,64 @@ impl Default for StatBarZDepth {
     }
 }
 
-#[derive(Clone, Component)]
+#[derive(Copy, Clone, Component)]
+pub enum BarColor {
+    Fixed(Color),
+    Lerp { min: Color, max: Color },
+    Cospolate { min: Color, max: Color },
+    LerpHSV { min: Color, max: Color },
+    CospolateHSV { min: Color, max: Color },
+    Function(fn(f32) -> Color), // + 'static + Send + Sync),
+}
+
+impl std::fmt::Debug for BarColor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Fixed(arg0) => f.debug_tuple("Fixed").field(arg0).finish(),
+            Self::Lerp { min, max } => f.debug_struct("Lerp").field("min", min).field("max", max).finish(),
+            Self::Cospolate { min, max } => f.debug_struct("Cospolate").field("min", min).field("max", max).finish(),
+            Self::LerpHSV { min, max } => f.debug_struct("LerpHSV").field("min", min).field("max", max).finish(),
+            Self::CospolateHSV { min, max } => f.debug_struct("CospolateHSV").field("min", min).field("max", max).finish(),
+            Self::Function(arg0) => f.debug_tuple("Function").field(arg0).finish(),
+        }
+    }
+}
+
+
+impl BarColor {
+    pub fn set_min(&mut self, color: Color) {
+        match self {
+            BarColor::Lerp { min, .. } => *min = color,
+            BarColor::Cospolate { min, .. } => *min = color,
+            BarColor::LerpHSV { min, .. } => *min = color,
+            BarColor::CospolateHSV { min, .. } => *min = color,
+            _ => {}
+        }
+    }
+
+    pub fn set_max(&mut self, color: Color) {
+        match self {
+            BarColor::Lerp { max, .. } => *max = color,
+            BarColor::Cospolate { max, .. } => *max = color,
+            BarColor::LerpHSV { max, .. } => *max = color,
+            BarColor::CospolateHSV { max, .. } => *max = color,
+            _ => {}
+        }
+    }
+}
+
+impl From<Color> for BarColor {
+    fn from(color: Color) -> Self {
+        BarColor::Fixed(color)
+    }
+}
+
+
+
+#[derive(Clone, Component, Debug)]
 pub struct StatBarStyle {
     /// color of the full part of the bar
-    pub full_color: Color,
+    pub bar_color: BarColor,
     /// color of the empty part of the bar
     pub empty_color: Color,
     /// None = no border
@@ -26,16 +79,15 @@ pub struct StatBarStyle {
 impl Default for StatBarStyle {
     fn default() -> Self {
         Self { 
-            full_color: Color::ORANGE, 
+            bar_color: Color::ORANGE.into(), 
             empty_color: Color::rgb(0.2, 0.1, 0.0), 
             border: StatBarBorder::default().into(),
         }
     }
 }
 
-pub struct StatBarOrientation(pub f32);
-
-#[derive(Clone, Component)]
+#[derive(Clone, Copy, Debug)]
+#[derive(Component)]
 pub struct StatBarBorder {
     /// color of the border
     pub color: Color,
@@ -67,12 +119,14 @@ pub struct StatBar {
     /// Length of the full part of the bar.\
     /// empty = 0.0, full = 1.0
     pub value: f32,
+    pub length: f32,
+    pub thickness: f32,
     /// colors and border etc
     pub style: StatBarStyle,
     /// displacement from sprite
-    pub displacement: Vec2,
-    /// size of stat bar, doesn't include border
-    pub size: Vec2,
+    pub translation: Vec2,
+    
+    
     /// rotate stat bar CCW by `rotation` radians 
     pub rotation: f32,
 }
@@ -82,8 +136,9 @@ impl Default for StatBar {
         Self { 
             value: 0.5, 
             style: Default::default(),
-            displacement: Vec2::ZERO, 
-            size: vec2(64., 8.),
+            translation: Vec2::ZERO, 
+            length: 64.,
+            thickness: 8.,
             rotation: 0.0
         }
     }
@@ -97,7 +152,7 @@ impl Default for StatBar {
 pub struct StatBars {
     pub bars: Vec<StatBar>,
     /// Displacement applied to all StatBars in the collection
-    pub displacement: Vec2,
+    pub translation: Vec2,
     /// all StatBars in collection rotated CCW by `rotation` radians
     pub rotation: f32,
 }
@@ -127,6 +182,32 @@ pub enum StatBarSystem {
     ExtractStatBars,
 }
 
+#[derive(Bundle)]
+pub struct StatBarBundle {
+    statbar: StatBar,
+    #[bundle] 
+    visibility_bundle: VisibilityBundle,
+}
+
+impl StatBarBundle {
+    pub fn new(statbar: StatBar) -> Self {
+        Self { statbar, visibility_bundle: VisibilityBundle::default() }
+    }
+}
+
+#[derive(Bundle)]
+pub struct StatBarsBundle {
+    statbars: StatBars,
+    #[bundle] 
+    visibility_bundle: VisibilityBundle,
+}
+
+
+impl StatBarsBundle {
+    pub fn new(statbars: StatBars) -> Self {
+        Self { statbars, visibility_bundle: VisibilityBundle::default() }
+    }
+}
 pub struct StatBarsPlugin;
 
 impl Plugin for StatBarsPlugin {
