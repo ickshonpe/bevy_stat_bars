@@ -19,3 +19,6 @@ version = "0.1.5"
 [dev-dependencies.bevy]
 version = "0.8"
 default-features = true
+
+[dev-dependencies.bevy-inspector-egui]
+version = "0.13.0"

@@ -1,6 +1,7 @@
 pub mod extract_sprites;
 
 use bevy::prelude::*;
+use bevy::reflect::FromReflect;
 
 /// using the sprite renderer to draw the stat bars
 /// all stat bars share the same depth
@@ -12,7 +13,8 @@ impl Default for StatBarZDepth {
     }
 }
 
-#[derive(Copy, Clone, Component)]
+#[derive(Copy, Clone, Reflect, Component, FromReflect)]
+#[reflect(Component)]
 pub enum BarColor {
     Fixed(Color),
     Lerp { min: Color, max: Color },
@@ -20,6 +22,12 @@ pub enum BarColor {
     LerpHSV { min: Color, max: Color },
     CospolateHSV { min: Color, max: Color },
     Function{ min: Color, max: Color, calculate_color: fn(Color, Color, f32) -> Color }, // + 'static + Send + Sync),
+}
+
+impl Default for BarColor {
+    fn default() -> Self {
+        Self::Fixed(Color::ORANGE)
+    }
 }
 
 impl std::fmt::Debug for BarColor {
@@ -69,7 +77,8 @@ impl From<Color> for BarColor {
 
 
 
-#[derive(Clone, Component, Debug)]
+#[derive(Clone, Component, Debug, Reflect, FromReflect)]
+#[reflect(Component)]
 pub struct StatBarStyle {
     /// color of the full part of the bar
     pub bar_color: BarColor,
@@ -89,8 +98,9 @@ impl Default for StatBarStyle {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Reflect, FromReflect)]
 #[derive(Component)]
+#[reflect(Component)]
 pub struct StatBarBorder {
     /// color of the border
     pub color: Color,
@@ -117,7 +127,8 @@ impl StatBarBorder {
     }
 }
 
-#[derive(Clone, Component)]
+#[derive(Clone, Component, Debug, Reflect, FromReflect)]
+#[reflect(Component)]
 pub struct StatBar {
     /// Length of the full part of the bar.\
     /// empty = 0.0, full = 1.0
@@ -128,11 +139,11 @@ pub struct StatBar {
     pub style: StatBarStyle,
     /// displacement from sprite
     pub translation: Vec2,
-    
-    
     /// rotate stat bar CCW by `rotation` radians 
     pub rotation: f32,
 }
+
+
 
 impl Default for StatBar {
     fn default() -> Self {
@@ -151,7 +162,8 @@ impl Default for StatBar {
 /// Bevy entities can't have two components of the same type.
 /// To support more than one stat bar on an entity, 
 /// we store them in a vec inside a component
-#[derive(Clone, Component, Default)]
+#[derive(Clone, Component, Default, Reflect, FromReflect)]
+#[reflect(Component)]
 pub struct StatBars {
     pub bars: Vec<StatBar>,
     /// Displacement applied to all StatBars in the collection
@@ -215,7 +227,13 @@ pub struct StatBarsPlugin;
 
 impl Plugin for StatBarsPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<StatBarZDepth>();
+        app
+        .init_resource::<StatBarZDepth>()
+        .register_type::<StatBarStyle>()
+        .register_type::<StatBars>()
+        .register_type::<BarColor>()
+        .register_type::<StatBarBorder>()
+        ;
         if let Ok(render_app) = app.get_sub_app_mut(bevy::render::RenderApp) {
             render_app
             .add_system_to_stage(
