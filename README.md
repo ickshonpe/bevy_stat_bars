@@ -24,17 +24,17 @@ Add the dependency to your Cargo.toml file with
 version = "0.3"
 ```
 
-Then you need to register any components you want to follow with a Statbar
+Then register any components you want to observe with a Statbar with your Bevy App:
 
 ```rust 
 App::new()
     .add_plugins(DefaultPlugins)
     .add_statbar_bar_component_observer::<HitPoints>()
-    // rest of app
+    // ..etc, rest of app
     .run();
 ```
 
-You also need to implement the ```StatbarObservable``` trait on the component:
+You also need to implement the ```StatbarObservable``` trait on those components:
 
 ```rust 
 impl StatbarObservable for HitPoints {
@@ -44,7 +44,7 @@ impl StatbarObservable for HitPoints {
 }
 ```
 
-and then can you add a ```Statbar::<HitPoints>``` component to an entity to visualizee its HitPoints component
+And now you can add a ```Statbar::<HitPoints>``` component to an entity to visualize its HitPoints component
 
 ```rust
 commands.entity(enemy_id)
