@@ -40,10 +40,11 @@ pub(crate) fn extract_stat_bars<V>(
         let length = bar.length;
         let thickness = bar.thickness;
         *transform.translation_mut() = global_transform.translation_vec3a();
-        transform.translation_mut().z = depth
+        let z = depth
             .as_ref()
             .map(|depth| depth.0)
             .unwrap_or(DEFAULT_Z_DEPTH);
+        transform.translation_mut().z = z;
         transform.translation_mut().x += bar.displacement.x;
         transform.translation_mut().y += bar.displacement.y;
         let size = length * major_axis + thickness * minor_axis;
@@ -67,7 +68,7 @@ pub(crate) fn extract_stat_bars<V>(
 
         // draw bar back
         if value < 1.0 {
-            transform.translation_mut().z += 0.1;
+            transform.translation_mut().z = z + 1.0;
             extracted_sprites.sprites.alloc().init(ExtractedSprite {
                 entity: id,
                 transform,
@@ -87,7 +88,8 @@ pub(crate) fn extract_stat_bars<V>(
             let bar_size = value * length * major_axis + thickness * minor_axis;
             let direction = if bar.reverse { -1. } else { 1. };
             *transform.translation_mut() +=
-                Vec3A::from(direction * 0.5 * length * (value - 1.) * major_axis.extend(0.2));
+                Vec3A::from(direction * 0.5 * length * (value - 1.) * major_axis.extend(0.));
+            transform.translation_mut().z = z + 2.0;
             extracted_sprites.sprites.alloc().init(ExtractedSprite {
                 entity: id,
                 transform,
