@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_stat_bars_3::*;
+use bevy_stat_bars::*;
 
 // Spawns a red and navy statbar with a white border in the middle of the window.
 // The left and right cursor keys decrease and increase the value of the bar.

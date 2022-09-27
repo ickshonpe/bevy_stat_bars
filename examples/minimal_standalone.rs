@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_stat_bars_3::*;
+use bevy_stat_bars::*;
 
 // spawns a statbar in the middle of the window
 

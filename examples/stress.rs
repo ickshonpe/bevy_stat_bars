@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy::window::PresentMode;
 use bevy::window::WindowMode;
-use bevy_stat_bars_3::*;
+use bevy_stat_bars::*;
 use std::marker::PhantomData;
 
 // spawn 10,000 wizards with health and magic statbars

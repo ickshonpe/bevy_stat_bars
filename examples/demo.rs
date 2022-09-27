@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_inspector_egui::WorldInspectorPlugin;
-use bevy_stat_bars_3::*;
+use bevy_stat_bars::*;
 use std::marker::PhantomData;
 
 #[derive(Component, Default, Reflect)]
