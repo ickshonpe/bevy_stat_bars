@@ -1,247 +1,418 @@
-pub mod extract_sprites;
+mod extraction;
 
 use bevy::prelude::*;
-use bevy::reflect::FromReflect;
+use std::marker::PhantomData;
 
-/// using the sprite renderer to draw the stat bars
-/// all stat bars share the same depth
-pub struct StatBarZDepth(pub f32);
+/// Insert as a resource to set z depth of Statbars
+pub struct StatbarDepth(pub f32);
 
-impl Default for StatBarZDepth {
+/// Implement `StatbarObservable` for a component you want to visualise with a stat bar.
+/// Should return a value between 0.0 (= empty) and 1.0 (= full).
+/// If the value is larger or smaller it is clamped before rendering.
+pub trait StatbarObservable {
+    fn get_statbar_value(&self) -> f32;
+}
+
+/// Insert this component to observe components from another entity.
+/// Does not have a generic parameter for a marker component.
+///
+/// Overrides any local observeable components.
+/// Overriden by StatbarObserveParent.
+///
+/// Does not have a marker component because I think it would be very confusing to have
+/// an entity with three statbars observing components on three other entities.
+/// If you really want a many to one capability, it should be trivial to write your own system.
+#[derive(Component, Reflect)]
+pub struct StatbarObserveEntity(pub Entity);
+
+/// Insert this component to observe components from the entities parent.
+/// Overrides any local obversable components and StatbarObservedEntity.
+#[derive(Component, Reflect)]
+pub struct StatbarObserveParent;
+
+// observe a resource that implements 'StatbarOversable'
+#[derive(Reflect)]
+pub struct StatbarObserveResource<T>
+where
+    T: 'static,
+{
+    #[reflect(ignore)]
+    #[doc(hidden)]
+    pub _phantom: PhantomData<fn() -> T>,
+}
+
+impl<T> Default for StatbarObserveResource<T>
+where
+    T: 'static,
+{
     fn default() -> Self {
-        Self(999.0)
+        Self {
+            _phantom: Default::default(),
+        }
     }
 }
 
-#[derive(Copy, Clone, Reflect, Component, FromReflect)]
+/// Insert this component to add a statbar to an entity.
+/// Multiple statbars can be inserted on a single entity by using different marker components.
+#[derive(Component, Reflect)]
 #[reflect(Component)]
-pub enum BarColor {
-    Fixed(Color),
-    Lerp { min: Color, max: Color },
-    Cospolate { min: Color, max: Color },
-    LerpHSV { min: Color, max: Color },
-    CospolateHSV { min: Color, max: Color },
-    Function{ min: Color, max: Color, calculate_color: fn(Color, Color, f32) -> Color }, // + 'static + Send + Sync),
-}
-
-impl Default for BarColor {
-    fn default() -> Self {
-        Self::Fixed(Color::ORANGE)
-    }
-}
-
-impl std::fmt::Debug for BarColor {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Fixed(arg0) => f.debug_tuple("Fixed").field(arg0).finish(),
-            Self::Lerp { min, max } => f.debug_struct("Lerp").field("min", min).field("max", max).finish(),
-            Self::Cospolate { min, max } => f.debug_struct("Cospolate").field("min", min).field("max", max).finish(),
-            Self::LerpHSV { min, max } => f.debug_struct("LerpHSV").field("min", min).field("max", max).finish(),
-            Self::CospolateHSV { min, max } => f.debug_struct("CospolateHSV").field("min", min).field("max", max).finish(),
-            Self::Function { min, max, calculate_color } => 
-                f.debug_struct("Function").field("min", min).field("max", max).field("calculate_color", calculate_color).finish(),
-        }
-    }
-}
-
-
-impl BarColor {
-    pub fn set_min(&mut self, color: Color) {
-        match self {
-            BarColor::Lerp { min, .. } => *min = color,
-            BarColor::Cospolate { min, .. } => *min = color,
-            BarColor::LerpHSV { min, .. } => *min = color,
-            BarColor::CospolateHSV { min, .. } => *min = color,
-            BarColor::Function { min, .. } => *min = color,
-            _ => {}
-        }
-    }
-
-    pub fn set_max(&mut self, color: Color) {
-        match self {
-            BarColor::Lerp { max, .. } => *max = color,
-            BarColor::Cospolate { max, .. } => *max = color,
-            BarColor::LerpHSV { max, .. } => *max = color,
-            BarColor::CospolateHSV { max, .. } => *max = color,
-            BarColor::Function { max, .. } => *max = color, 
-            _ => {}
-        }
-    }
-}
-
-impl From<Color> for BarColor {
-    fn from(color: Color) -> Self {
-        BarColor::Fixed(color)
-    }
-}
-
-
-
-#[derive(Clone, Component, Debug, Reflect, FromReflect)]
-#[reflect(Component)]
-pub struct StatBarStyle {
+pub struct Statbar<T = ()>
+where
+    T: 'static,
+{
     /// color of the full part of the bar
-    pub bar_color: BarColor,
+    pub color: Color,
     /// color of the empty part of the bar
     pub empty_color: Color,
-    /// None = no border
-    pub border: Option<StatBarBorder>
+    /// length of the bar
+    pub length: f32,
+    /// thickness of the bar
+    pub thickness: f32,
+    /// absolute displacement from the GlobalTransform's position
+    /// not part of the transform hierarchy, won't be scaled or rotated.
+    pub displacement: Vec2,
+    /// false => horizontally orientated bar,
+    /// true => vertically orientated bar,
+    pub vertical: bool,
+    /// false =>
+    /// * horizontal bar increasing from left to right
+    /// * vertical bar increasing from bottom to top
+    /// true =>
+    /// * horizontal bar increasing from right to left
+    /// * vertical bar increasing from bottom to top
+    pub reverse: bool,
+    /// if true, do not draw
+    pub hide: bool,
+    /// value of bar
+    /// * 0.0 => bar entirely colored with empty color
+    /// * 0.75 => bar three quarters full color, one quarter empty color
+    /// * 1.0 => bar entity colored with full color
+    pub value: f32,
+    #[reflect(ignore)]
+    #[doc(hidden)]
+    pub _phantom: PhantomData<fn() -> T>,
 }
 
-impl Default for StatBarStyle {
+impl<T> Default for Statbar<T> {
     fn default() -> Self {
-        Self { 
-            bar_color: Color::ORANGE.into(), 
-            empty_color: Color::rgb(0.2, 0.1, 0.0), 
-            border: StatBarBorder::default().into(),
+        Self {
+            color: Color::YELLOW,
+            empty_color: Color::rgb(0.2, 0.2, 0.0),
+            length: 100.,
+            thickness: 16.,
+            displacement: Vec2::ZERO,
+            vertical: false,
+            reverse: false,
+            hide: false,
+            value: 0.75,
+            _phantom: PhantomData,
         }
     }
 }
 
-#[derive(Clone, Copy, Debug, Reflect, FromReflect)]
-#[derive(Component)]
+/// Adds a border around the corresponding Statbar
+#[derive(Clone, Copy, Debug, Component, Reflect)]
 #[reflect(Component)]
-pub struct StatBarBorder {
+pub struct StatbarBorder<T>
+where
+    T: 'static,
+{
     /// color of the border
     pub color: Color,
-    /// Thickness of the border on edges
-    /// `[left, right, bottom, top]` respectively.
-    pub thickness: [f32; 4],
+    /// thickness of the border on the left
+    left: f32,
+    /// thickness of the border on the right
+    right: f32,
+    /// thickness of the border on the bottom
+    bottom: f32,
+    /// thickness of the border on the top
+    top: f32,
+    #[reflect(ignore)]
+    phantom: PhantomData<fn() -> T>,
 }
 
-impl Default for StatBarBorder {
-    fn default() -> Self {
-        Self { 
-            color: Color::ANTIQUE_WHITE, 
-            thickness: [2.0; 4]
-        }
-    }
-}
-
-impl StatBarBorder {
-    pub fn new(color: Color, thickness: f32) -> Self {
+impl<T> StatbarBorder<T>
+where
+    T: 'static,
+{
+    /// A StarbarBorder with the same thickness on all four sides
+    pub fn all(color: Color, thickness: f32) -> Self {
         Self {
             color,
-            thickness: [thickness; 4]
+            left: thickness,
+            right: thickness,
+            bottom: thickness,
+            top: thickness,
+            phantom: PhantomData,
         }
     }
 }
 
-#[derive(Clone, Component, Debug, Reflect, FromReflect)]
-#[reflect(Component)]
-pub struct StatBar {
-    /// Length of the full part of the bar.\
-    /// empty = 0.0, full = 1.0
-    pub value: f32,
-    pub length: f32,
-    pub thickness: f32,
-    /// colors and border etc
-    pub style: StatBarStyle,
-    /// displacement from sprite
-    pub translation: Vec2,
-    /// rotate stat bar CCW by `rotation` radians 
-    pub rotation: f32,
-}
-
-
-
-impl Default for StatBar {
+impl<T> Default for StatbarBorder<T>
+where
+    T: 'static,
+{
     fn default() -> Self {
-        Self { 
-            value: 0.5, 
-            style: Default::default(),
-            translation: Vec2::ZERO, 
-            length: 64.,
-            thickness: 8.,
-            rotation: 0.0
+        Self::all(Color::WHITE, 2.0)
+    }
+}
+
+/// Linearly interpolate the value of the bar color
+/// between `min` and `max` using the value of the Statbar
+/// * statbar.value == 0. => statbar.color == min
+/// * statbar.value == 1. => statbar.color == max
+#[derive(Clone, Copy, Debug, Component, Reflect)]
+#[reflect(Component)]
+pub struct StatbarColorLerp<T>
+where
+    T: 'static,
+{
+    /// bar color when value is 0.0
+    pub min: Color,
+    /// bar color when value is 1.0
+    pub max: Color,
+    #[reflect(ignore)]
+    phantom: PhantomData<fn() -> T>,
+}
+
+impl<T> Default for StatbarColorLerp<T>
+where
+    T: 'static,
+{
+    fn default() -> Self {
+        Self {
+            min: Color::RED,
+            max: Color::GREEN,
+            phantom: Default::default(),
         }
     }
 }
 
-/// Collection of stat bars.
-/// Bevy entities can't have two components of the same type.
-/// To support more than one stat bar on an entity, 
-/// we store them in a vec inside a component
-#[derive(Clone, Component, Default, Reflect, FromReflect)]
+impl<T> StatbarColorLerp<T>
+where
+    T: Component,
+{
+    pub fn new(min: Color, max: Color) -> Self {
+        Self {
+            min,
+            max,
+            phantom: Default::default(),
+        }
+    }
+}
+
+/// Change the statbar color depending on the value of the statbar's subject
+///
+/// Could be used for a health bar that
+/// turns to red when the character has less than 25% health remaining.
+#[derive(Clone, Copy, Debug, Component, Reflect)]
 #[reflect(Component)]
-pub struct StatBars {
-    pub bars: Vec<StatBar>,
-    /// Displacement applied to all StatBars in the collection
-    pub translation: Vec2,
-    /// all StatBars in collection rotated CCW by `rotation` radians
-    pub rotation: f32,
+pub struct StatbarColorSwitch<T>
+where
+    T: 'static,
+{
+    /// * `statbar.value <= pivot`
+    ///     => sets bar's color to `low`
+    /// * `piviot < statbar.value
+    ///     => sets bar's color to `high`
+    pub pivot: f32,
+    /// statbar color when the statbar's value is less than or equal to pivot
+    pub low: Color,
+    /// statbar color when the statbar's value is greater than pivot
+    pub high: Color,
+    #[reflect(ignore)]
+    phantom: PhantomData<fn() -> T>,
 }
 
-impl StatBars {
-    pub fn iter(&self) -> impl Iterator<Item=&StatBar> {
-        self.bars.iter()
+impl<T> Default for StatbarColorSwitch<T>
+where
+    T: 'static,
+{
+    fn default() -> Self {
+        Self {
+            pivot: 0.25,
+            low: Color::RED,
+            high: Color::GREEN,
+            phantom: Default::default(),
+        }
     }
 }
 
-impl std::ops::Index<usize> for StatBars {
-    type Output=StatBar;
-
-    fn index(&self, index: usize) -> &Self::Output {
-        &self.bars[index]
+impl<T> StatbarColorSwitch<T>
+where
+    T: 'static,
+{
+    pub fn new(pivot: f32, low: Color, high: Color) -> Self {
+        Self {
+            pivot,
+            low,
+            high,
+            phantom: Default::default(),
+        }
     }
 }
 
-impl std::ops::IndexMut<usize> for StatBars {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        &mut self.bars[index]
+fn switch_stat_bar_colors<T>(
+    mut color_switch_query: Query<
+        (&mut Statbar<T>, &mut StatbarColorSwitch<T>),
+        Changed<Statbar<T>>,
+    >,
+) where
+    T: 'static,
+{
+    color_switch_query.for_each_mut(|(mut bar, switcher)| {
+        bar.color = if bar.value <= switcher.pivot {
+            switcher.low
+        } else {
+            switcher.high
+        };
+    });
+}
+
+fn lerp_stat_bar_colors<T>(
+    mut color_lerp_query: Query<(&mut Statbar<T>, &mut StatbarColorLerp<T>), Changed<Statbar<T>>>,
+) where
+    T: 'static,
+{
+    color_lerp_query.for_each_mut(|(mut bar, lerper)| {
+        bar.color = Vec4::from(lerper.min)
+            .lerp(lerper.max.into(), bar.value)
+            .into();
+    });
+}
+
+fn update_statbar_values<T>(
+    mut statbar_query: Query<
+        (&mut Statbar<T>, &T),
+        (
+            Changed<T>,
+            Without<StatbarObserveParent>,
+            Without<StatbarObserveEntity>,
+        ),
+    >,
+) where
+    T: Component + StatbarObservable,
+{
+    statbar_query.for_each_mut(|(mut statbar, value)| {
+        statbar.value = value.get_statbar_value();
+    });
+}
+
+fn update_statbar_values_from_parents<T>(
+    mut statbar_query: Query<
+        (&mut Statbar<T>, &Parent),
+        (With<StatbarObserveParent>, Without<StatbarObserveEntity>),
+    >,
+    parent_value_query: Query<&T, Changed<T>>,
+) where
+    T: Component + StatbarObservable,
+{
+    statbar_query.for_each_mut(|(mut statbar, parent)| {
+        if let Ok(value) = parent_value_query.get(parent.get()) {
+            statbar.value = value.get_statbar_value();
+        }
+    });
+}
+
+fn update_statbar_values_from_other<T>(
+    mut statbar_query: Query<
+        (&mut Statbar<T>, &StatbarObserveEntity),
+        Without<StatbarObserveParent>,
+    >,
+    other_value_query: Query<&T, Changed<T>>,
+) where
+    T: Component + StatbarObservable,
+{
+    statbar_query.for_each_mut(|(mut statbar, &StatbarObserveEntity(target))| {
+        if let Ok(value) = other_value_query.get(target) {
+            statbar.value = value.get_statbar_value();
+        }
+    });
+}
+
+fn update_statbar_from_resource<T>(resource: Res<T>, mut statbar_query: Query<&mut Statbar<T>>)
+where
+    T: StatbarObservable + 'static + Send + Sync,
+{
+    if resource.is_changed() {
+        statbar_query.for_each_mut(|mut statbar| {
+            statbar.value = resource.get_statbar_value();
+        });
     }
 }
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, SystemLabel)]
-pub enum StatBarSystem {
-    ExtractStatBars,
+pub enum StatbarSystem {
+    UpdateValues,
+    UpdateColors,
+    ExtractSprites,
 }
 
-#[derive(Bundle)]
-pub struct StatBarBundle {
-    statbar: StatBar,
-    #[bundle] 
-    visibility_bundle: VisibilityBundle,
+pub trait RegisterStatbarSubject {
+    fn add_statbar_component_observer<T: StatbarObservable + Component>(&mut self) -> &mut Self;
+    fn add_statbar_resource_observer<T: StatbarObservable + 'static + Send + Sync>(
+        &mut self,
+    ) -> &mut Self;
+    fn add_standalone_statbar<T: 'static>(&mut self) -> &mut Self;
+    fn add_statbar_effects<T: 'static>(&mut self) -> &mut Self;
 }
 
-impl StatBarBundle {
-    pub fn new(statbar: StatBar) -> Self {
-        Self { statbar, visibility_bundle: VisibilityBundle::default() }
-    }
-}
-
-#[derive(Bundle)]
-pub struct StatBarsBundle {
-    statbars: StatBars,
-    #[bundle] 
-    visibility_bundle: VisibilityBundle,
-}
-
-
-impl StatBarsBundle {
-    pub fn new(statbars: StatBars) -> Self {
-        Self { statbars, visibility_bundle: VisibilityBundle::default() }
-    }
-}
-pub struct StatBarsPlugin;
-
-impl Plugin for StatBarsPlugin {
-    fn build(&self, app: &mut App) {
-        app
-        .init_resource::<StatBarZDepth>()
-        .register_type::<StatBarStyle>()
-        .register_type::<StatBars>()
-        .register_type::<BarColor>()
-        .register_type::<StatBarBorder>()
-        ;
-        if let Ok(render_app) = app.get_sub_app_mut(bevy::render::RenderApp) {
-            render_app
+impl RegisterStatbarSubject for App {
+    fn add_statbar_component_observer<T: StatbarObservable + Component>(&mut self) -> &mut Self {
+        self.add_standalone_statbar::<T>()
+            .add_statbar_effects::<T>()
             .add_system_to_stage(
+                CoreStage::PostUpdate,
+                update_statbar_values::<T>.label(StatbarSystem::UpdateValues),
+            )
+            .add_system_to_stage(
+                CoreStage::PostUpdate,
+                update_statbar_values_from_other::<T>.label(StatbarSystem::UpdateValues),
+            )
+            .add_system_to_stage(
+                CoreStage::PostUpdate,
+                update_statbar_values_from_parents::<T>.label(StatbarSystem::UpdateValues),
+            )
+    }
+
+    fn add_statbar_resource_observer<T: StatbarObservable + 'static + Send + Sync>(
+        &mut self,
+    ) -> &mut Self {
+        self.add_standalone_statbar::<T>()
+            .add_statbar_effects::<T>()
+            .add_system_to_stage(
+                CoreStage::PostUpdate,
+                update_statbar_from_resource::<T>.label(StatbarSystem::UpdateValues),
+            )
+    }
+
+    fn add_standalone_statbar<T: 'static>(&mut self) -> &mut Self {
+        if let Ok(render_app) = self.get_sub_app_mut(bevy::render::RenderApp) {
+            render_app.add_system_to_stage(
                 bevy::render::RenderStage::Extract,
-                extract_sprites::extract_stat_bars_to_sprites
-                .label(StatBarSystem::ExtractStatBars)
-                .after(bevy::sprite::SpriteSystem::ExtractSprites)
+                extraction::extract_stat_bars::<T>
+                    .after(bevy::sprite::SpriteSystem::ExtractSprites),
             );
         }
+        self.register_type::<Statbar<T>>()
+            .register_type::<StatbarBorder<T>>()
+            .add_statbar_effects::<T>()
+    }
+
+    fn add_statbar_effects<T: 'static>(&mut self) -> &mut Self {
+        self.register_type::<StatbarColorLerp<T>>()
+            .register_type::<StatbarColorSwitch<T>>()
+            .add_system_to_stage(
+                CoreStage::PostUpdate,
+                switch_stat_bar_colors::<T>
+                    .after(StatbarSystem::UpdateValues)
+                    .label(StatbarSystem::UpdateColors),
+            )
+            .add_system_to_stage(
+                CoreStage::PostUpdate,
+                lerp_stat_bar_colors::<T>
+                    .after(StatbarSystem::UpdateValues)
+                    .label(StatbarSystem::UpdateColors),
+            )
     }
 }
