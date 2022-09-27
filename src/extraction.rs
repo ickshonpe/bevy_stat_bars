@@ -9,7 +9,7 @@ use bevy::sprite::ExtractedSprites;
 use copyless::VecHelper;
 
 /// The z depth the stat bar sprites are drawn with.
-const DEFAULT_Z_DEPTH: f32 = 999.0;
+const DEFAULT_Z_DEPTH: f32 = 990.0;
 
 pub(crate) fn extract_stat_bars<V>(
     extraction: Extract<(
@@ -24,6 +24,7 @@ pub(crate) fn extract_stat_bars<V>(
     )>,
     mut extracted_sprites: ResMut<ExtractedSprites>,
 ) {
+    let mut transform = GlobalTransform::default();
     let (depth, query) = &*extraction;
     for (id, bar, border, global_transform, computed_visibility) in query.iter() {
         if bar.hide || !computed_visibility.is_visible() {
@@ -38,7 +39,7 @@ pub(crate) fn extract_stat_bars<V>(
         let value = bar.value;
         let length = bar.length;
         let thickness = bar.thickness;
-        let mut transform = *global_transform;
+        *transform.translation_mut() = global_transform.translation_vec3a();
         transform.translation_mut().z = depth
             .as_ref()
             .map(|depth| depth.0)
@@ -66,6 +67,7 @@ pub(crate) fn extract_stat_bars<V>(
 
         // draw bar back
         if value < 1.0 {
+            transform.translation_mut().z += 0.1;
             extracted_sprites.sprites.alloc().init(ExtractedSprite {
                 entity: id,
                 transform,
@@ -85,7 +87,7 @@ pub(crate) fn extract_stat_bars<V>(
             let bar_size = value * length * major_axis + thickness * minor_axis;
             let direction = if bar.reverse { -1. } else { 1. };
             *transform.translation_mut() +=
-                Vec3A::from(direction * 0.5 * length * (value - 1.) * major_axis.extend(0.));
+                Vec3A::from(direction * 0.5 * length * (value - 1.) * major_axis.extend(0.2));
             extracted_sprites.sprites.alloc().init(ExtractedSprite {
                 entity: id,
                 transform,
