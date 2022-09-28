@@ -4,7 +4,8 @@ use bevy::window::WindowMode;
 use bevy_stat_bars::*;
 use std::marker::PhantomData;
 
-// spawn 10,000 wizards with health and magic statbars
+// spawn 10_000 wizards with health and magic statbars
+const GRID_SIZE: usize = 100; // 100 * 100 = 10_000
 
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
@@ -77,14 +78,13 @@ fn spawn_camera(mut commands: Commands) {
 }
 
 fn spawn_wizards(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let n = 100;
     let s = 16.0;
-    let t = (-0.5 * 1.5 * n as f32 * s * Vec2::ONE).extend(0.0);
+    let t = (-0.5 * 1.5 * GRID_SIZE as f32 * s * Vec2::ONE).extend(0.0);
     let mut transform = Transform::from_translation(t);
     let l = s;
     let w = 3.0;
-    for _ in 0..n {
-        for _ in 0..n {
+    for _ in 0..GRID_SIZE {
+        for _ in 0..GRID_SIZE {
             commands
                 .spawn_bundle(SpriteBundle {
                     sprite: Sprite {

@@ -1,6 +1,6 @@
 [package]
 name = "bevy_stat_bars"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 keywords = ["bevy", "gamedev", "graphics", "2d", "ui"]
@@ -22,3 +22,6 @@ default-features = true
 
 [dev-dependencies.bevy-inspector-egui]
 version = "0.13.0"
+
+[dev-dependencies.seq-macro]
+version = "0.3.1"
